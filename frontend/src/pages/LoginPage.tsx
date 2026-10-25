@@ -148,7 +148,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ navigate }) => {
           </div>
 
           <div className="text-[11px] text-ink-500 text-center leading-relaxed">
-            Name is derived automatically from your university email ID (e.g. <span className="font-mono text-ink-300">bhumika.j</span>).
+            Name is derived automatically from your university email ID (e.g. <span className="font-mono text-ink-300">ahduni.edu.in</span>).
           </div>
         </div>
       </div>
