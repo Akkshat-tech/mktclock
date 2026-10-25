@@ -12,7 +12,7 @@ db: Optional[AsyncIOMotorDatabase] = None
 async def connect_to_mongodb() -> Optional[AsyncIOMotorDatabase]:
     """Connect to MongoDB cluster and ensure necessary indexes."""
     global client, db
-    
+
     kwargs = {
         "serverSelectionTimeoutMS": settings.MONGODB_SERVER_SELECTION_TIMEOUT_MS,
     }
@@ -51,14 +51,16 @@ async def connect_to_mongodb() -> Optional[AsyncIOMotorDatabase]:
                 )
                 db = client[settings.MONGODB_DB_NAME]
                 await client.admin.command("ping")
-                logger.info(f"Connected to MongoDB (development TLS bypass): {settings.MONGODB_DB_NAME}")
+                logger.info(
+                    f"Connected to MongoDB (development TLS bypass): {settings.MONGODB_DB_NAME}")
                 await init_db_indexes(db)
                 return db
             except Exception as retry_err:
-                logger.error(f"Could not connect to MongoDB on retry: {retry_err}")
+                logger.error(
+                    f"Could not connect to MongoDB on retry: {retry_err}")
                 return None
 
-        logger.warning(f"Could not connect to MongoDB at {settings.MONGODB_URI}: {e}")
+        logger.warning("Could not connect to MongoDB: %s", e)
         # We don't crash the server so health endpoint can report status
         return None
 
@@ -84,7 +86,8 @@ async def update_existing_student_names(database: AsyncIOMotorDatabase):
                         {"_id": student["_id"]},
                         {"$set": {"name": derived_name}}
                     )
-                    logger.info(f"Updated student {email} name to: {derived_name}")
+                    logger.info(
+                        f"Updated student {email} name to: {derived_name}")
     except Exception as e:
         logger.error(f"Error updating existing student names: {e}")
 
@@ -122,7 +125,8 @@ def get_database() -> AsyncIOMotorDatabase:
     global client, db
     if db is None:
         is_atlas = "mongodb+srv://" in settings.MONGODB_URI or "ssl=true" in settings.MONGODB_URI.lower()
-        kwargs = {"serverSelectionTimeoutMS": settings.MONGODB_SERVER_SELECTION_TIMEOUT_MS}
+        kwargs = {
+            "serverSelectionTimeoutMS": settings.MONGODB_SERVER_SELECTION_TIMEOUT_MS}
         if is_atlas:
             try:
                 import certifi
@@ -134,5 +138,6 @@ def get_database() -> AsyncIOMotorDatabase:
             db = client[settings.MONGODB_DB_NAME]
         except Exception as e:
             logger.error(f"Direct connection to MongoDB failed: {e}")
-            raise RuntimeError(f"Database is not connected. Please verify your MONGODB_URI: {e}")
+            raise RuntimeError(
+                f"Database is not connected. Please verify your MONGODB_URI: {e}")
     return db

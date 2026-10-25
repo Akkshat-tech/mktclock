@@ -69,7 +69,8 @@ async def health_check():
         database = get_database()
         await database.client.admin.command("ping")
         db_connected = True
-    except Exception:
+    except Exception as exc:
+        logger.warning("MongoDB health check failed: %s", exc)
         db_connected = False
 
     return {
