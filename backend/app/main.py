@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.config import settings
-from app.database import connect_to_mongodb, close_mongodb_connection, client
+from app.database import connect_to_mongodb, close_mongodb_connection, get_database
 from app.routes.auth import router as auth_router
 from app.routes.students import router as students_router
 from app.routes.challenges import router as challenges_router
@@ -47,12 +47,16 @@ app.add_middleware(
 )
 
 # Global error handler for unhandled exceptions
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    logger.error(f"Unhandled exception on {request.method} {request.url.path}: {exc}", exc_info=True)
+    logger.error(
+        f"Unhandled exception on {request.method} {request.url.path}: {exc}", exc_info=True)
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"detail": "An internal server error occurred. Please try again shortly."}
+        content={
+            "detail": "An internal server error occurred. Please try again shortly."}
     )
 
 
@@ -61,12 +65,12 @@ async def global_exception_handler(request: Request, exc: Exception):
 async def health_check():
     """Health check reporting server, environment, and MongoDB connection status."""
     db_connected = False
-    if client:
-        try:
-            await client.admin.command("ping")
-            db_connected = True
-        except Exception:
-            db_connected = False
+    try:
+        database = get_database()
+        await database.client.admin.command("ping")
+        db_connected = True
+    except Exception:
+        db_connected = False
 
     return {
         "status": "healthy",
