@@ -94,7 +94,7 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
         </div>
         <p className="text-xs text-ink-400 flex items-center justify-center gap-1.5">
           <ShieldAlert className="w-3.5 h-3.5 text-signal shrink-0" />
-          <span>Leaving this tab or locking screen ends this attempt.</span>
+          <span>Leaving this tab or locking the screen starts a 7-second return window.</span>
         </p>
       </div>
 

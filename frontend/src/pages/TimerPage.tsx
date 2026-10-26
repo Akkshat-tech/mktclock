@@ -12,6 +12,8 @@ import { formatDurationDisplay, formatSeconds } from '../utils/formatters';
 import { Sparkles, ArrowRight, AlertCircle } from 'lucide-react';
 import { Button } from '../components/Button';
 
+const FOCUS_RETURN_GRACE_SECONDS = 7;
+
 interface TimerPageProps {
   navigate: (route: string, state?: any) => void;
 }
@@ -23,6 +25,10 @@ export const TimerPage: React.FC<TimerPageProps> = ({ navigate }) => {
   const [isStarting, setIsStarting] = useState<boolean>(false);
   const [isEnding, setIsEnding] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [focusReturnSeconds, setFocusReturnSeconds] = useState<number | null>(null);
+  const focusReturnTimeoutRef = React.useRef<number | null>(null);
+  const focusReturnIntervalRef = React.useRef<number | null>(null);
+  const focusReturnDeadlineRef = React.useRef<number | null>(null);
 
   // Notification for interrupted session when returning to page
   const [interruptedNotice, setInterruptedNotice] = useState<{
@@ -113,6 +119,55 @@ export const TimerPage: React.FC<TimerPageProps> = ({ navigate }) => {
     onInterrupt: handleInterrupt,
   });
 
+  const clearFocusReturnGrace = useCallback(() => {
+    if (focusReturnTimeoutRef.current !== null) {
+      window.clearTimeout(focusReturnTimeoutRef.current);
+      focusReturnTimeoutRef.current = null;
+    }
+    if (focusReturnIntervalRef.current !== null) {
+      window.clearInterval(focusReturnIntervalRef.current);
+      focusReturnIntervalRef.current = null;
+    }
+    focusReturnDeadlineRef.current = null;
+    setFocusReturnSeconds(null);
+  }, []);
+
+  const handleFocusLost = useCallback(() => {
+    if (focusReturnDeadlineRef.current !== null) return;
+
+    const deadline = Date.now() + FOCUS_RETURN_GRACE_SECONDS * 1000;
+    focusReturnDeadlineRef.current = deadline;
+    setFocusReturnSeconds(FOCUS_RETURN_GRACE_SECONDS);
+
+    const finishInterruption = () => {
+      clearFocusReturnGrace();
+      handleManualInterrupt('page_hidden');
+    };
+
+    focusReturnIntervalRef.current = window.setInterval(() => {
+      const secondsRemaining = Math.ceil((deadline - Date.now()) / 1000);
+      if (secondsRemaining <= 0) {
+        finishInterruption();
+      } else {
+        setFocusReturnSeconds(secondsRemaining);
+      }
+    }, 250);
+    focusReturnTimeoutRef.current = window.setTimeout(finishInterruption, FOCUS_RETURN_GRACE_SECONDS * 1000);
+  }, [clearFocusReturnGrace, handleManualInterrupt]);
+
+  const handleFocusReturned = useCallback(() => {
+    const deadline = focusReturnDeadlineRef.current;
+    if (deadline === null) return;
+
+    if (Date.now() >= deadline) {
+      clearFocusReturnGrace();
+      handleManualInterrupt('page_hidden');
+      return;
+    }
+
+    clearFocusReturnGrace();
+  }, [clearFocusReturnGrace, handleManualInterrupt]);
+
   // Track active attempt and elapsed time in refs for unmount & beforeunload handlers
   const activeAttemptRef = React.useRef(activeAttempt);
   activeAttemptRef.current = activeAttempt;
@@ -125,6 +180,7 @@ export const TimerPage: React.FC<TimerPageProps> = ({ navigate }) => {
   // Trigger interruption when user navigates away from timer page or closes browser
   useEffect(() => {
     const handleBeforeUnload = () => {
+      clearFocusReturnGrace();
       const current = activeAttemptRef.current;
       if (current && current.status === 'active' && !isEndingRef.current) {
         challengeService.interruptChallenge(
@@ -140,6 +196,7 @@ export const TimerPage: React.FC<TimerPageProps> = ({ navigate }) => {
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      clearFocusReturnGrace();
       const current = activeAttemptRef.current;
       if (current && current.status === 'active' && !isEndingRef.current) {
         // Leaving the timer page immediately interrupts and saves valid unbroken minutes
@@ -155,15 +212,13 @@ export const TimerPage: React.FC<TimerPageProps> = ({ navigate }) => {
         });
       }
     };
-  }, [refreshUser]);
+  }, [clearFocusReturnGrace, refreshUser]);
 
-  // Page Visibility API Hook: Trigger interruption when document becomes hidden
+  // Allow a brief return window before recording a page-visibility interruption.
   usePageVisibility({
     enabled: isTimerActive,
-    onHidden: () => {
-      // The moment the page becomes hidden or app switches, immediately end the attempt
-      handleManualInterrupt('page_hidden');
-    },
+    onHidden: handleFocusLost,
+    onVisible: handleFocusReturned,
   });
 
   // Start new challenge
@@ -275,16 +330,26 @@ export const TimerPage: React.FC<TimerPageProps> = ({ navigate }) => {
 
       {/* Main View: Active Timer vs Setup */}
       {activeAttempt && activeAttempt.status === 'active' ? (
-        <FocusTimer
-          remainingSeconds={remainingSeconds}
-          elapsedSeconds={elapsedSeconds}
-          progressPercentage={progressPercentage}
-          targetSeconds={targetSeconds}
-          wakeLockStatus={wakeLockStatus}
-          personalBestSeconds={user?.best_score_seconds || 0}
-          onEndManually={handleEndManually}
-          isEnding={isEnding}
-        />
+        <>
+          {focusReturnSeconds !== null && (
+            <div
+              role="status"
+              className="w-full max-w-md mx-auto mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/40 text-center text-sm text-amber-300"
+            >
+              Return to the timer within {focusReturnSeconds} seconds or this attempt will end.
+            </div>
+          )}
+          <FocusTimer
+            remainingSeconds={remainingSeconds}
+            elapsedSeconds={elapsedSeconds}
+            progressPercentage={progressPercentage}
+            targetSeconds={targetSeconds}
+            wakeLockStatus={wakeLockStatus}
+            personalBestSeconds={user?.best_score_seconds || 0}
+            onEndManually={handleEndManually}
+            isEnding={isEnding}
+          />
+        </>
       ) : (
         <DurationSelector
           onStartChallenge={handleStartChallenge}

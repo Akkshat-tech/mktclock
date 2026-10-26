@@ -28,7 +28,7 @@
    - **Previous best scores are preserved:** If a student already has a 45-minute personal record and later gets interrupted after 20 minutes, their score remains 45 minutes.
 2. **Page Visibility Enforcement:**
    - Students must keep the challenge page visible on screen.
-   - Leaving the page, switching apps (e.g. WhatsApp, Instagram), minimizing the browser, or locking the phone triggers the browser’s `visibilitychange` / `pagehide` events, immediately halting the attempt and saving the valid unbroken elapsed focus time.
+   - Leaving the page, switching apps (e.g. WhatsApp, Instagram), minimizing the browser, or locking the phone starts a 7-second return window. Returning before it expires cancels the interruption; otherwise the attempt ends and its elapsed focus time is saved.
 3. **Screen Wake Lock API:**
    - The app automatically requests `navigator.wakeLock.request('screen')` when a challenge begins to keep the phone screen awake during active immersion.
 4. **Server-Authoritative Timing:**

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { ShieldCheck, GraduationCap, AlertCircle, Loader2 } from 'lucide-react';
+import { ShieldCheck, GraduationCap, AlertCircle, Loader2, Clock3 } from 'lucide-react';
 
 interface LoginPageProps {
   navigate: (route: string) => void;
@@ -118,6 +118,18 @@ export const LoginPage: React.FC<LoginPageProps> = ({ navigate }) => {
             </div>
             <div className="text-ink-400 leading-relaxed">
               Only verified university accounts with the domain <strong className="text-white font-mono">@{allowedDomain}</strong> can enter the challenge and record scores.
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-xl bg-ink-900/60 border border-ink-800 flex items-start gap-3">
+          <Clock3 className="w-5 h-5 text-signal shrink-0 mt-0.5" />
+          <div className="text-xs space-y-1">
+            <div className="font-semibold text-ink-200">
+              7-Second Return Window
+            </div>
+            <div className="text-ink-400 leading-relaxed">
+              If a call or other interruption takes you away from the timer, return to the challenge within 7 seconds to continue. If you do not return in time, your attempt ends and your elapsed time is recorded.
             </div>
           </div>
         </div>
